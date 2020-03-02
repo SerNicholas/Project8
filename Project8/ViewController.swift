@@ -17,6 +17,7 @@ class ViewController: UIViewController {
     
     var activatedButtons = [UIButton]()
     var solutions = [String]()
+    var level = 1
     
     var score = 0 {
         didSet {
@@ -24,7 +25,128 @@ class ViewController: UIViewController {
         }
     }
     
-    var level = 1
+    
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        loadLevel()
+    }
+    
+    @objc func letterTapped(_ sender: UIButton) {
+        guard let buttonTitle = sender.titleLabel?.text else { return }
+        
+        currentAnswer.text = currentAnswer.text?.appending(buttonTitle)
+        activatedButtons.append(sender)
+        sender.isHidden = true
+    }
+    
+    @objc func submitTapped(_ sender: UIButton) {
+        guard let answerText = currentAnswer.text else { return }
+        
+        if let solutionPosition = solutions.firstIndex(of: answerText) {
+            activatedButtons.removeAll()
+            
+            var splitAnswers = answersLabel.text?.components(separatedBy: "\n")
+            splitAnswers?[solutionPosition] = answerText
+            answersLabel.text = splitAnswers?.joined(separator: "\n")
+            
+            currentAnswer.text = ""
+            score += 1
+            
+            if score % 7 == 0 && score < 14 {
+                let ac = UIAlertController(title: "Well done!", message: "Are you ready for the next level?", preferredStyle: .alert)
+                ac.addAction(UIAlertAction(title: "Let's go!", style: .default, handler: levelUp))
+                present(ac, animated: true)
+                // code beneath is added so that Player knows that the game is finished and that he/she can start the game again from level 1
+            } else if score == 14 {
+                let ac = UIAlertController(title: "The End", message: "Start again from level 1?", preferredStyle: .alert)
+                ac.addAction(UIAlertAction(title: "Let's go!", style: .default, handler: levelUp))
+//                ac.addAction(UIAlertAction(title: "Cancel", style: .cancel, handler: nil))
+                present(ac, animated: true)
+            }
+        }
+    }
+    
+    func levelUp(action: UIAlertAction) {
+        level += 1
+        solutions.removeAll(keepingCapacity: true)
+
+        loadLevel()
+
+        for btn in letterButtons {
+            btn.isHidden = false
+        }
+        // When level 2 is finished you get no clues and no answers presented on the screen. Only letters remain. In order to fix that and start game again, code added beneath is nedeed
+        if level > 2 {
+            score = 0
+            level = 0
+            level += 1
+            solutions.removeAll(keepingCapacity: true)
+            scoreLabel.text = ""
+            scoreLabel.text = "Score: \(score)"
+            for btn in letterButtons {
+                btn.isHidden = false
+            }
+           loadLevel()
+        }
+    }
+
+    
+    @objc func clearTapped(_ sender: UIButton) {
+        currentAnswer.text = ""
+
+        for btn in activatedButtons {
+            btn.isHidden = false
+        }
+
+        activatedButtons.removeAll()
+    }
+    
+    func loadLevel() {
+        var clueString = ""
+        var solutionString = ""
+        var letterBits = [String]()
+        
+        if let levelFileURL = Bundle.main.url(forResource: "level\(level)", withExtension: "txt") {
+            if let levelContents = try? String(contentsOf: levelFileURL) {
+                var lines = levelContents.components(separatedBy: "\n")
+                lines.shuffle()
+                
+                for (index, line) in lines.enumerated() {
+                    let parts = line.components(separatedBy: ": ")
+                    let answer = parts[0]
+                    let clue = parts[1]
+                    
+                    clueString += "\(index + 1). \(clue)\n"
+                    
+                    let solutionWord = answer.replacingOccurrences(of: "|", with: "")
+                    solutionString += "\(solutionWord.count) letters\n"
+                    
+                    solutions.append(solutionWord)
+
+                    let bits = answer.components(separatedBy: "|")
+                    letterBits += bits
+                }
+            }
+        }
+        
+        //now we are going to set cluesLabel, answerLabel text, to shuffle up our buttons and then assign letter groups to buttons
+        cluesLabel.text = clueString.trimmingCharacters(in: .whitespacesAndNewlines)
+        answersLabel.text = solutionString.trimmingCharacters(in: .whitespacesAndNewlines)
+        
+        letterButtons.shuffle()
+        
+        if letterButtons.count == letterBits.count {
+            for i in 0 ..< letterButtons.count {
+                letterButtons[i].setTitle(letterBits[i], for: .normal)
+            }
+        }
+    }
+}
+
+
+
+extension ViewController {
+    
     
     override func loadView() {
         view = UIView()
@@ -80,6 +202,7 @@ class ViewController: UIViewController {
         buttonsView.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(buttonsView)
         
+     
         
         NSLayoutConstraint.activate([
             
@@ -145,104 +268,15 @@ class ViewController: UIViewController {
                 letterButtons.append(letterButton)
                 
                 letterButton.addTarget(self, action: #selector(letterTapped), for: .touchUpInside)
-            }
-        }
-    }
-    
-    override func viewDidLoad() {
-        super.viewDidLoad()
-        loadLevel()
-    }
-    
-    @objc func letterTapped(_ sender: UIButton) {
-        guard let buttonTitle = sender.titleLabel?.text else { return }
-        
-        currentAnswer.text = currentAnswer.text?.appending(buttonTitle)
-        activatedButtons.append(sender)
-        sender.isHidden = true
-    }
-    
-    @objc func submitTapped(_ sender: UIButton) {
-        guard let answerText = currentAnswer.text else { return }
-
-          if let solutionPosition = solutions.firstIndex(of: answerText) {
-              activatedButtons.removeAll()
-
-              var splitAnswers = answersLabel.text?.components(separatedBy: "\n")
-              splitAnswers?[solutionPosition] = answerText
-              answersLabel.text = splitAnswers?.joined(separator: "\n")
-
-              currentAnswer.text = ""
-              score += 1
-
-              if score % 7 == 0 {
-                  let ac = UIAlertController(title: "Well done!", message: "Are you ready for the next level?", preferredStyle: .alert)
-                  ac.addAction(UIAlertAction(title: "Let's go!", style: .default, handler: levelUp))
-                  present(ac, animated: true)
-              }
-          }
-    }
-    
-    func levelUp(action: UIAlertAction) {
-        level += 1
-        solutions.removeAll(keepingCapacity: true)
-
-        loadLevel()
-
-        for btn in letterButtons {
-            btn.isHidden = false
-        }
-    }
-    
-    @objc func clearTapped(_ sender: UIButton) {
-        currentAnswer.text = ""
-
-        for btn in activatedButtons {
-            btn.isHidden = false
-        }
-
-        activatedButtons.removeAll()
-    }
-    
-    func loadLevel() {
-        var clueString = ""
-        var solutionString = ""
-        var letterBits = [String]()
-        
-        if let levelFileURL = Bundle.main.url(forResource: "level\(level)", withExtension: "txt") {
-            if let levelContents = try? String(contentsOf: levelFileURL) {
-                var lines = levelContents.components(separatedBy: "\n")
-                lines.shuffle()
                 
-                for (index, line) in lines.enumerated() {
-                    let parts = line.components(separatedBy: ": ")
-                    let answer = parts[0]
-                    let clue = parts[1]
-                    
-                    clueString += "\(index + 1). \(clue)\n"
-                    
-                    let solutionWord = answer.replacingOccurrences(of: "|", with: "")
-                    solutionString += "\(solutionWord.count) letters\n"
-                    
-                    solutions.append(solutionWord)
-
-                    let bits = answer.components(separatedBy: "|")
-                    letterBits += bits
-                }
-            }
-        }
-        
-        //now we are going to set cluesLabel, answerLabel text, to shuffle up our buttons and then assign letter groups to buttons
-        cluesLabel.text = clueString.trimmingCharacters(in: .whitespacesAndNewlines)
-        answersLabel.text = solutionString.trimmingCharacters(in: .whitespacesAndNewlines)
-        
-        letterButtons.shuffle()
-        
-        if letterButtons.count == letterBits.count {
-            for i in 0 ..< letterButtons.count {
-                letterButtons[i].setTitle(letterBits[i], for: .normal)
+                letterButton.layer.borderColor = UIColor.systemBlue.cgColor
+                letterButton.layer.borderWidth = 0.5
+                letterButton.layer.cornerRadius = 15
+                
+                     
             }
         }
     }
+    
+    
 }
-
