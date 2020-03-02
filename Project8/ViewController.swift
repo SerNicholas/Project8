@@ -58,7 +58,7 @@ class ViewController: UIViewController {
                 present(ac, animated: true)
                 // code beneath is added so that Player knows that the game is finished and that he/she can start the game again from level 1
             } else if score == 14 {
-                let ac = UIAlertController(title: "The End", message: "Start again from level 1?", preferredStyle: .alert)
+                let ac = UIAlertController(title: "Game Over", message: "Start again from level 1?", preferredStyle: .alert)
                 ac.addAction(UIAlertAction(title: "Let's go!", style: .default, handler: levelUp))
 //                ac.addAction(UIAlertAction(title: "Cancel", style: .cancel, handler: nil))
                 present(ac, animated: true)
